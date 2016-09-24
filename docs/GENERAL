@@ -149,6 +149,11 @@ In "xmpp_lookandfeel" section:
     Creates a new window where the raw XML messages are displayed. Useful for
     debugging. (default: OFF)
 
+/SET xmpp_strip_resource ON/OFF
+    Removes resource part from jid in private message window. This is handy
+    when chatting with someone using clients that set the resource string to
+    something random and chenge it regularly. (default: OFF)
+
 In "xmpp_proxy" section:
 
     See the "Proxy usage" section of this file.

@@ -16,6 +16,8 @@
  */
 
 #include "module.h"
+#incluse "channels.h"
+#include "settings.h"
 #include "signals.h"
 
 #include "xmpp-servers.h"
@@ -66,6 +68,7 @@ sig_recv_message(XMPP_SERVER_REC *server, LmMessage *lmsg, const int type,
 {
 	LmMessageNode *node;
 	char *str, *subject;
+	const char *from_stripped;
 	
 	if ((type != LM_MESSAGE_SUB_TYPE_NOT_SET
 	    && type != LM_MESSAGE_SUB_TYPE_HEADLINE
@@ -74,11 +77,25 @@ sig_recv_message(XMPP_SERVER_REC *server, LmMessage *lmsg, const int type,
 	    || server->ischannel(SERVER(server), from))
 		return;
 	node = lm_message_node_get_child(lmsg->node, "subject");
+
+	/* If the 'xmpp_strip_resource' setting is True and 'from' is not a
+          channel/muc set 'from_stripped' to the value of 'from' but with
+          the resource part stripped. Otherwise just duplicate from to
+          from_stripped. */
+	if (from != NULL) {
+		str = xmpp_strip_resource(from);
+		from_stripped =
+		  ((settings_get_bool("xmpp_strip_resource")) &&
+		   (channel_find(SERVER(server), str)) == NULL) ?
+		  g_strdup(str) : g_strdup(from);
+		g_free(str);
+	}
+
 	if (node != NULL && node->value != NULL && *node->value != '\0') {
 		str = xmpp_recode_in(node->value);
 		subject = g_strconcat("Subject: ", str, (void *)NULL);
 		g_free(str);
-		signal_emit("message private", 4, server, subject, from, from);
+		signal_emit("message private", 4, server, subject, from_stripped, from);
 		g_free(subject);
 	}
 	node = lm_message_node_get_child(lmsg->node, "body");
@@ -86,11 +103,11 @@ sig_recv_message(XMPP_SERVER_REC *server, LmMessage *lmsg, const int type,
 		str = xmpp_recode_in(node->value);
 		if (g_ascii_strncasecmp(str, "/me ", 4) == 0)
 			signal_emit("message xmpp action", 5,
-			    server, str+4, from, from,
+			    server, str+4, from_stripped, from,
 			    GINT_TO_POINTER(SEND_TARGET_NICK));
 		else
 			signal_emit("message private", 4, server,
-			    str, from, from);
+			    str, from_stripped, from);
 		g_free(str);
 	}
 }
